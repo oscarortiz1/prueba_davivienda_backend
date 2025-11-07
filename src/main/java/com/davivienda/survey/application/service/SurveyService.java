@@ -1,0 +1,143 @@
+package com.davivienda.survey.application.service;
+
+import com.davivienda.survey.application.dto.SurveyRequest;
+import com.davivienda.survey.domain.model.Question;
+import com.davivienda.survey.domain.model.Survey;
+import com.davivienda.survey.domain.port.SurveyRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class SurveyService {
+    
+    private final SurveyRepository surveyRepository;
+    
+    public Survey createSurvey(SurveyRequest request, String userId) {
+        Survey survey = Survey.builder()
+                .id(UUID.randomUUID().toString())
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .createdBy(userId)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .isPublished(false)
+                .questions(new ArrayList<>())
+                .build();
+        
+        return surveyRepository.save(survey);
+    }
+    
+    public Survey getSurvey(String id) {
+        return surveyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Survey not found"));
+    }
+    
+    public List<Survey> getAllSurveys() {
+        return surveyRepository.findAll();
+    }
+    
+    public List<Survey> getUserSurveys(String userId) {
+        return surveyRepository.findByCreatedBy(userId);
+    }
+    
+    public Survey updateSurvey(String id, SurveyRequest request, String userId) {
+        Survey survey = getSurvey(id);
+        
+        if (!survey.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        survey.setTitle(request.getTitle());
+        survey.setDescription(request.getDescription());
+        survey.setUpdatedAt(LocalDateTime.now());
+        
+        return surveyRepository.save(survey);
+    }
+    
+    public void deleteSurvey(String id, String userId) {
+        Survey survey = getSurvey(id);
+        
+        if (!survey.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        surveyRepository.deleteById(id);
+    }
+    
+    public Survey publishSurvey(String id, String userId) {
+        Survey survey = getSurvey(id);
+        
+        if (!survey.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        if (survey.getQuestions() == null || survey.getQuestions().isEmpty()) {
+            throw new RuntimeException("Cannot publish survey without questions");
+        }
+        
+        survey.setIsPublished(true);
+        survey.setUpdatedAt(LocalDateTime.now());
+        
+        return surveyRepository.save(survey);
+    }
+    
+    public Survey addQuestion(String surveyId, Question question, String userId) {
+        Survey survey = getSurvey(surveyId);
+        
+        if (!survey.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        question.setId(UUID.randomUUID().toString());
+        question.setSurveyId(surveyId);
+        
+        if (survey.getQuestions() == null) {
+            survey.setQuestions(new ArrayList<>());
+        }
+        
+        survey.getQuestions().add(question);
+        survey.setUpdatedAt(LocalDateTime.now());
+        
+        return surveyRepository.save(survey);
+    }
+    
+    public Survey updateQuestion(String surveyId, String questionId, Question updatedQuestion, String userId) {
+        Survey survey = getSurvey(surveyId);
+        
+        if (!survey.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        List<Question> questions = survey.getQuestions();
+        for (int i = 0; i < questions.size(); i++) {
+            if (questions.get(i).getId().equals(questionId)) {
+                updatedQuestion.setId(questionId);
+                updatedQuestion.setSurveyId(surveyId);
+                questions.set(i, updatedQuestion);
+                break;
+            }
+        }
+        
+        survey.setUpdatedAt(LocalDateTime.now());
+        return surveyRepository.save(survey);
+    }
+    
+    public Survey deleteQuestion(String surveyId, String questionId, String userId) {
+        Survey survey = getSurvey(surveyId);
+        
+        if (!survey.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        survey.getQuestions().removeIf(q -> q.getId().equals(questionId));
+        survey.setUpdatedAt(LocalDateTime.now());
+        
+        return surveyRepository.save(survey);
+    }
+}
