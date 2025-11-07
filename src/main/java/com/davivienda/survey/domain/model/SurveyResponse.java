@@ -18,4 +18,13 @@ public class SurveyResponse {
     private String respondentId;
     private List<Answer> answers;
     private LocalDateTime completedAt;
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Answer {
+        private String questionId;
+        private List<String> value;
+    }
 }

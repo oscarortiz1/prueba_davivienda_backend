@@ -3,6 +3,8 @@ package com.davivienda.survey.application.service;
 import com.davivienda.survey.application.dto.SurveyRequest;
 import com.davivienda.survey.domain.model.Question;
 import com.davivienda.survey.domain.model.Survey;
+import com.davivienda.survey.domain.model.SurveyResponse;
+import com.davivienda.survey.domain.port.ResponseRepository;
 import com.davivienda.survey.domain.port.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import java.util.UUID;
 public class SurveyService {
     
     private final SurveyRepository surveyRepository;
+    private final ResponseRepository responseRepository;
     
     public Survey createSurvey(SurveyRequest request, String userId) {
         Survey survey = Survey.builder()
@@ -69,6 +72,11 @@ public class SurveyService {
         
         if (!survey.getCreatedBy().equals(userId)) {
             throw new RuntimeException("Unauthorized");
+        }
+        
+        List<SurveyResponse> responses = responseRepository.findBySurveyId(id);
+        for (SurveyResponse response : responses) {
+            responseRepository.deleteById(response.getId());
         }
         
         surveyRepository.deleteById(id);
