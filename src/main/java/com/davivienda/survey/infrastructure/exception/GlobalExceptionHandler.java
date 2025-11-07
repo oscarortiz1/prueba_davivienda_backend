@@ -19,8 +19,20 @@ public class GlobalExceptionHandler {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("message", ex.getMessage());
-        error.put("status", HttpStatus.BAD_REQUEST.value());
-        return ResponseEntity.badRequest().body(error);
+        
+        HttpStatus status;
+        if (ex.getMessage().contains("not found")) {
+            status = HttpStatus.NOT_FOUND;
+        } else if (ex.getMessage().contains("Unauthorized")) {
+            status = HttpStatus.FORBIDDEN;
+        } else if (ex.getMessage().contains("not published")) {
+            status = HttpStatus.FORBIDDEN;
+        } else {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        
+        error.put("status", status.value());
+        return ResponseEntity.status(status).body(error);
     }
     
     @ExceptionHandler(BadCredentialsException.class)
