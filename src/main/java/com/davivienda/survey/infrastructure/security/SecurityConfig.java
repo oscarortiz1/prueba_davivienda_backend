@@ -45,7 +45,6 @@ public class SecurityConfig {
                         .requestMatchers("/surveys/published").permitAll()
                         .requestMatchers("/surveys/*/responses/**").permitAll()
                         .requestMatchers("/surveys/*/responses").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/surveys/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

@@ -41,6 +41,17 @@ public class SurveyService {
                 .orElseThrow(() -> new RuntimeException("Survey not found"));
     }
     
+    public Survey getPublicSurvey(String id) {
+        Survey survey = surveyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Survey not found"));
+        
+        if (!Boolean.TRUE.equals(survey.getIsPublished())) {
+            throw new RuntimeException("Survey is not published");
+        }
+        
+        return survey;
+    }
+    
     public List<Survey> getAllSurveys() {
         return surveyRepository.findAll();
     }
@@ -63,6 +74,10 @@ public class SurveyService {
         survey.setTitle(request.getTitle());
         survey.setDescription(request.getDescription());
         survey.setUpdatedAt(LocalDateTime.now());
+        
+        if (Boolean.TRUE.equals(survey.getIsPublished())) {
+            survey.setIsPublished(false);
+        }
         
         return surveyRepository.save(survey);
     }
@@ -116,6 +131,10 @@ public class SurveyService {
         survey.getQuestions().add(question);
         survey.setUpdatedAt(LocalDateTime.now());
         
+        if (Boolean.TRUE.equals(survey.getIsPublished())) {
+            survey.setIsPublished(false);
+        }
+        
         return surveyRepository.save(survey);
     }
     
@@ -137,6 +156,11 @@ public class SurveyService {
         }
         
         survey.setUpdatedAt(LocalDateTime.now());
+        
+        if (Boolean.TRUE.equals(survey.getIsPublished())) {
+            survey.setIsPublished(false);
+        }
+        
         return surveyRepository.save(survey);
     }
     
@@ -149,6 +173,10 @@ public class SurveyService {
         
         survey.getQuestions().removeIf(q -> q.getId().equals(questionId));
         survey.setUpdatedAt(LocalDateTime.now());
+        
+        if (Boolean.TRUE.equals(survey.getIsPublished())) {
+            survey.setIsPublished(false);
+        }
         
         return surveyRepository.save(survey);
     }

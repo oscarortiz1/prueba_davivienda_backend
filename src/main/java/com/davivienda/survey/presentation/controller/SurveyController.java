@@ -32,8 +32,16 @@ public class SurveyController {
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Survey> getSurvey(@PathVariable String id) {
+    public ResponseEntity<Survey> getSurvey(
+            @PathVariable String id,
+            Authentication authentication
+    ) {
         return ResponseEntity.ok(surveyService.getSurvey(id));
+    }
+    
+    @GetMapping("/public/{id}")
+    public ResponseEntity<Survey> getPublicSurvey(@PathVariable String id) {
+        return ResponseEntity.ok(surveyService.getPublicSurvey(id));
     }
     
     @GetMapping
