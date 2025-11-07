@@ -42,6 +42,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/surveys/public/**").permitAll()
+                        .requestMatchers("/surveys/published").permitAll()
+                        .requestMatchers("/surveys/*/responses/**").permitAll()
+                        .requestMatchers("/surveys/*/responses").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/surveys/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
