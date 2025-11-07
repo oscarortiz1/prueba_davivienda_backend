@@ -151,6 +151,40 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     }
     
     @Override
+    public List<Survey> findByIsPublished(boolean isPublished) {
+        try {
+            CompletableFuture<List<Survey>> future = new CompletableFuture<>();
+            
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .orderByChild("isPublished")
+                    .equalTo(isPublished)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            List<Survey> surveys = new ArrayList<>();
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> data = (Map<String, Object>) child.getValue();
+                                surveys.add(mapToSurvey(data));
+                            }
+                            future.complete(surveys);
+                        }
+                        
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(error.toException());
+                        }
+                    });
+            
+            return future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            log.error("Error finding surveys by published status", e);
+            throw new RuntimeException("Error finding published surveys", e);
+        }
+    }
+    
+    @Override
     public void deleteById(String id) {
         try {
             CompletableFuture<Void> future = new CompletableFuture<>();

@@ -10,5 +10,6 @@ public interface SurveyRepository {
     Optional<Survey> findById(String id);
     List<Survey> findAll();
     List<Survey> findByCreatedBy(String userId);
+    List<Survey> findByIsPublished(boolean isPublished);
     void deleteById(String id);
 }

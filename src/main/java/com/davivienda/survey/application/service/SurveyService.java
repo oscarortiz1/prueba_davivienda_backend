@@ -46,6 +46,10 @@ public class SurveyService {
         return surveyRepository.findByCreatedBy(userId);
     }
     
+    public List<Survey> getPublishedSurveys() {
+        return surveyRepository.findByIsPublished(true);
+    }
+    
     public Survey updateSurvey(String id, SurveyRequest request, String userId) {
         Survey survey = getSurvey(id);
         

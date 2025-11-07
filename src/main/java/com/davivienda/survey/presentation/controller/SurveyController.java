@@ -48,6 +48,11 @@ public class SurveyController {
         return ResponseEntity.ok(surveyService.getUserSurveys(userId));
     }
     
+    @GetMapping("/published")
+    public ResponseEntity<List<Survey>> getPublishedSurveys() {
+        return ResponseEntity.ok(surveyService.getPublishedSurveys());
+    }
+    
     @PutMapping("/{id}")
     public ResponseEntity<Survey> updateSurvey(
             @PathVariable String id,
