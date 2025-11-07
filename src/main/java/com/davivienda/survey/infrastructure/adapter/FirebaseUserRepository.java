@@ -5,6 +5,7 @@ import com.davivienda.survey.domain.port.UserRepository;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 @Repository
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
 @Slf4j
 public class FirebaseUserRepository implements UserRepository {
     

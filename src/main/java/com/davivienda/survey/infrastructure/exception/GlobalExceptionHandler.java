@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
-        error.put("message", "Invalid email or password");
+        error.put("message", "Correo electrónico o contraseña inválidos");
         error.put("status", HttpStatus.UNAUTHORIZED.value());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
         
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
-        response.put("message", "Validation failed");
+        response.put("message", "Error de validación");
         response.put("errors", errors);
         response.put("status", HttpStatus.BAD_REQUEST.value());
         

@@ -26,7 +26,7 @@ public class AuthService {
     
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new RuntimeException("El correo electrónico ya está registrado");
         }
         
         User user = User.builder()
@@ -59,7 +59,7 @@ public class AuthService {
         );
         
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         
         String token = jwtService.generateToken(user.getEmail());
         
@@ -73,6 +73,6 @@ public class AuthService {
     
     public User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 }
