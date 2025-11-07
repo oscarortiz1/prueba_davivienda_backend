@@ -25,12 +25,35 @@ src/main/java/com/davivienda/survey/
 
 ## 🚀 Tecnologías
 
-- **Java 17**
-- **Spring Boot 3.2.0**
+- **Java 21**
+- **Spring Boot 3.4.0**
 - **Spring Security** con JWT
 - **Firebase Firestore** (Base de datos)
-- **Maven**
+- **Maven 3.9.11**
 - **Lombok**
+
+## 🔐 Configuración de Seguridad
+
+⚠️ **IMPORTANTE**: Este proyecto maneja credenciales sensibles. Lee [SECURITY.md](SECURITY.md) para configuración segura.
+
+### Variables de Entorno
+
+1. Copia `.env.example` a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configura tu JWT secret en `.env`:
+   ```
+   JWT_SECRET=tu_secreto_en_base64
+   ```
+
+### Firebase
+
+1. Ve a [Firebase Console](https://console.firebase.google.com/)
+2. Descarga las credenciales del proyecto
+3. Guárdalas en `src/main/resources/firebase-config.json`
+4. **NO subas este archivo al repositorio**
 
 ## ⚙️ Configuración de Firebase
 

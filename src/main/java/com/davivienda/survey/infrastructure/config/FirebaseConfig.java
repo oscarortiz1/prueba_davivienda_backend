@@ -20,14 +20,17 @@ public class FirebaseConfig {
     @Bean
     @ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
     public FirebaseApp initializeFirebase() throws IOException {
-        // Cargar desde classpath
-        ClassPathResource resource = new ClassPathResource("firebase-config.json");
-        
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
-                .setDatabaseUrl(databaseUrl)
-                .build();
-        
-        return FirebaseApp.initializeApp(options);
+        if (FirebaseApp.getApps().isEmpty()) {
+            ClassPathResource resource = new ClassPathResource("firebase-config.json");
+            
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                    .setDatabaseUrl(databaseUrl)
+                    .build();
+            
+            return FirebaseApp.initializeApp(options);
+        } else {
+            return FirebaseApp.getInstance();
+        }
     }
 }
