@@ -28,9 +28,47 @@ src/main/java/com/davivienda/survey/
 - **Java 21**
 - **Spring Boot 3.4.0**
 - **Spring Security** con JWT
-- **Firebase Firestore** (Base de datos)
+- **Firebase Realtime Database** (Base de datos en tiempo real)
 - **Maven 3.9.11**
 - **Lombok**
+
+## 🔥 Firebase Realtime Database
+
+Este proyecto usa **Firebase Realtime Database** en lugar de Firestore para soportar funcionalidades en tiempo real:
+
+### Ventajas
+- ✅ **Sincronización en tiempo real** - Cambios se reflejan instantáneamente
+- ✅ **Offline support** - La app funciona sin conexión
+- ✅ **Low latency** - Menor latencia que Firestore
+- ✅ **Perfect for real-time features** - Ideal para chat, colaboración, dashboards en vivo
+
+### Estructura de Datos
+```json
+{
+  "users": {
+    "userId": {
+      "id": "string",
+      "name": "string",
+      "email": "string",
+      "password": "string (hashed)",
+      "createdAt": "ISO timestamp",
+      "updatedAt": "ISO timestamp"
+    }
+  },
+  "surveys": {
+    "surveyId": {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "createdBy": "userId",
+      "isPublished": boolean,
+      "createdAt": "ISO timestamp",
+      "updatedAt": "ISO timestamp",
+      "questions": [...]
+    }
+  }
+}
+```
 
 ## 🔐 Configuración de Seguridad
 

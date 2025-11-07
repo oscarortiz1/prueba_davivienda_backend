@@ -4,13 +4,13 @@ import com.davivienda.survey.domain.model.Question;
 import com.davivienda.survey.domain.model.QuestionType;
 import com.davivienda.survey.domain.model.Survey;
 import com.davivienda.survey.domain.port.SurveyRepository;
-import com.google.cloud.firestore.Firestore;
-import com.google.firebase.cloud.FirestoreClient;
+import com.google.firebase.database.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -20,8 +20,8 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     
     private static final String COLLECTION_NAME = "surveys";
     
-    private Firestore getFirestore() {
-        return FirestoreClient.getFirestore();
+    private DatabaseReference getDatabase() {
+        return FirebaseDatabase.getInstance().getReference();
     }
     
     @Override
@@ -29,12 +29,20 @@ public class FirebaseSurveyRepository implements SurveyRepository {
         try {
             Map<String, Object> surveyData = surveyToMap(survey);
             
-            getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .document(survey.getId())
-                    .set(surveyData)
-                    .get();
+            CompletableFuture<Void> future = new CompletableFuture<>();
             
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .child(survey.getId())
+                    .setValue(surveyData, (error, ref) -> {
+                        if (error != null) {
+                            future.completeExceptionally(error.toException());
+                        } else {
+                            future.complete(null);
+                        }
+                    });
+            
+            future.get();
             return survey;
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error saving survey", e);
@@ -45,17 +53,31 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     @Override
     public Optional<Survey> findById(String id) {
         try {
-            var document = getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .document(id)
-                    .get()
-                    .get();
+            CompletableFuture<Optional<Survey>> future = new CompletableFuture<>();
             
-            if (!document.exists()) {
-                return Optional.empty();
-            }
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .child(id)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            if (!snapshot.exists()) {
+                                future.complete(Optional.empty());
+                                return;
+                            }
+                            
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> data = (Map<String, Object>) snapshot.getValue();
+                            future.complete(Optional.of(mapToSurvey(data)));
+                        }
+                        
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(error.toException());
+                        }
+                    });
             
-            return Optional.of(documentToSurvey(document.getData()));
+            return future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error finding survey by id", e);
             throw new RuntimeException("Error finding survey", e);
@@ -65,14 +87,29 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     @Override
     public List<Survey> findAll() {
         try {
-            var querySnapshot = getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .get()
-                    .get();
+            CompletableFuture<List<Survey>> future = new CompletableFuture<>();
             
-            return querySnapshot.getDocuments().stream()
-                    .map(doc -> documentToSurvey(doc.getData()))
-                    .collect(Collectors.toList());
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            List<Survey> surveys = new ArrayList<>();
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> data = (Map<String, Object>) child.getValue();
+                                surveys.add(mapToSurvey(data));
+                            }
+                            future.complete(surveys);
+                        }
+                        
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(error.toException());
+                        }
+                    });
+            
+            return future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error finding all surveys", e);
             throw new RuntimeException("Error finding surveys", e);
@@ -82,15 +119,31 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     @Override
     public List<Survey> findByCreatedBy(String userId) {
         try {
-            var querySnapshot = getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .whereEqualTo("createdBy", userId)
-                    .get()
-                    .get();
+            CompletableFuture<List<Survey>> future = new CompletableFuture<>();
             
-            return querySnapshot.getDocuments().stream()
-                    .map(doc -> documentToSurvey(doc.getData()))
-                    .collect(Collectors.toList());
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .orderByChild("createdBy")
+                    .equalTo(userId)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            List<Survey> surveys = new ArrayList<>();
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> data = (Map<String, Object>) child.getValue();
+                                surveys.add(mapToSurvey(data));
+                            }
+                            future.complete(surveys);
+                        }
+                        
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(error.toException());
+                        }
+                    });
+            
+            return future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error finding surveys by user", e);
             throw new RuntimeException("Error finding surveys", e);
@@ -100,11 +153,20 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     @Override
     public void deleteById(String id) {
         try {
-            getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .document(id)
-                    .delete()
-                    .get();
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .child(id)
+                    .removeValue((error, ref) -> {
+                        if (error != null) {
+                            future.completeExceptionally(error.toException());
+                        } else {
+                            future.complete(null);
+                        }
+                    });
+            
+            future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error deleting survey", e);
             throw new RuntimeException("Error deleting survey", e);
@@ -145,7 +207,7 @@ public class FirebaseSurveyRepository implements SurveyRepository {
         return data;
     }
     
-    private Survey documentToSurvey(Map<String, Object> data) {
+    private Survey mapToSurvey(Map<String, Object> data) {
         List<Question> questions = new ArrayList<>();
         if (data.get("questions") != null) {
             @SuppressWarnings("unchecked")
@@ -169,6 +231,15 @@ public class FirebaseSurveyRepository implements SurveyRepository {
     
     @SuppressWarnings("unchecked")
     private Question mapToQuestion(Map<String, Object> data) {
+        Object orderValue = data.get("order");
+        int order = 0;
+        
+        if (orderValue instanceof Long) {
+            order = ((Long) orderValue).intValue();
+        } else if (orderValue instanceof Integer) {
+            order = (Integer) orderValue;
+        }
+        
         return Question.builder()
                 .id((String) data.get("id"))
                 .surveyId((String) data.get("surveyId"))
@@ -176,7 +247,7 @@ public class FirebaseSurveyRepository implements SurveyRepository {
                 .type(QuestionType.valueOf((String) data.get("type")))
                 .options((List<String>) data.get("options"))
                 .required((Boolean) data.get("required"))
-                .order(((Long) data.get("order")).intValue())
+                .order(order)
                 .build();
     }
 }

@@ -2,14 +2,15 @@ package com.davivienda.survey.infrastructure.adapter;
 
 import com.davivienda.survey.domain.model.User;
 import com.davivienda.survey.domain.port.UserRepository;
-import com.google.cloud.firestore.Firestore;
-import com.google.firebase.cloud.FirestoreClient;
+import com.google.firebase.database.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 @Repository
@@ -19,28 +20,35 @@ public class FirebaseUserRepository implements UserRepository {
     
     private static final String COLLECTION_NAME = "users";
     
-    private Firestore getFirestore() {
-        return FirestoreClient.getFirestore();
+    private DatabaseReference getDatabase() {
+        return FirebaseDatabase.getInstance().getReference();
     }
     
     @Override
     public User save(User user) {
         try {
-            Map<String, Object> userData = Map.of(
-                    "id", user.getId(),
-                    "name", user.getName(),
-                    "email", user.getEmail(),
-                    "password", user.getPassword(),
-                    "createdAt", user.getCreatedAt().toString(),
-                    "updatedAt", user.getUpdatedAt().toString()
-            );
+            Map<String, Object> userData = new HashMap<>();
+            userData.put("id", user.getId());
+            userData.put("name", user.getName());
+            userData.put("email", user.getEmail());
+            userData.put("password", user.getPassword());
+            userData.put("createdAt", user.getCreatedAt().toString());
+            userData.put("updatedAt", user.getUpdatedAt().toString());
             
-            getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .document(user.getId())
-                    .set(userData)
-                    .get();
+            CompletableFuture<Void> future = new CompletableFuture<>();
             
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .child(user.getId())
+                    .setValue(userData, (error, ref) -> {
+                        if (error != null) {
+                            future.completeExceptionally(error.toException());
+                        } else {
+                            future.complete(null);
+                        }
+                    });
+            
+            future.get();
             return user;
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error saving user", e);
@@ -51,17 +59,31 @@ public class FirebaseUserRepository implements UserRepository {
     @Override
     public Optional<User> findById(String id) {
         try {
-            var document = getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .document(id)
-                    .get()
-                    .get();
+            CompletableFuture<Optional<User>> future = new CompletableFuture<>();
             
-            if (!document.exists()) {
-                return Optional.empty();
-            }
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .child(id)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            if (!snapshot.exists()) {
+                                future.complete(Optional.empty());
+                                return;
+                            }
+                            
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> data = (Map<String, Object>) snapshot.getValue();
+                            future.complete(Optional.of(mapToUser(data)));
+                        }
+                        
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(error.toException());
+                        }
+                    });
             
-            return Optional.of(documentToUser(document.getData()));
+            return future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error finding user by id", e);
             throw new RuntimeException("Error finding user", e);
@@ -71,18 +93,34 @@ public class FirebaseUserRepository implements UserRepository {
     @Override
     public Optional<User> findByEmail(String email) {
         try {
-            var querySnapshot = getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .whereEqualTo("email", email)
-                    .limit(1)
-                    .get()
-                    .get();
+            CompletableFuture<Optional<User>> future = new CompletableFuture<>();
             
-            if (querySnapshot.isEmpty()) {
-                return Optional.empty();
-            }
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .orderByChild("email")
+                    .equalTo(email)
+                    .limitToFirst(1)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            if (!snapshot.exists()) {
+                                future.complete(Optional.empty());
+                                return;
+                            }
+                            
+                            DataSnapshot firstChild = snapshot.getChildren().iterator().next();
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> data = (Map<String, Object>) firstChild.getValue();
+                            future.complete(Optional.of(mapToUser(data)));
+                        }
+                        
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(error.toException());
+                        }
+                    });
             
-            return Optional.of(documentToUser(querySnapshot.getDocuments().get(0).getData()));
+            return future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error finding user by email", e);
             throw new RuntimeException("Error finding user", e);
@@ -97,18 +135,27 @@ public class FirebaseUserRepository implements UserRepository {
     @Override
     public void deleteById(String id) {
         try {
-            getFirestore()
-                    .collection(COLLECTION_NAME)
-                    .document(id)
-                    .delete()
-                    .get();
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            
+            getDatabase()
+                    .child(COLLECTION_NAME)
+                    .child(id)
+                    .removeValue((error, ref) -> {
+                        if (error != null) {
+                            future.completeExceptionally(error.toException());
+                        } else {
+                            future.complete(null);
+                        }
+                    });
+            
+            future.get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error deleting user", e);
             throw new RuntimeException("Error deleting user", e);
         }
     }
     
-    private User documentToUser(Map<String, Object> data) {
+    private User mapToUser(Map<String, Object> data) {
         return User.builder()
                 .id((String) data.get("id"))
                 .name((String) data.get("name"))
