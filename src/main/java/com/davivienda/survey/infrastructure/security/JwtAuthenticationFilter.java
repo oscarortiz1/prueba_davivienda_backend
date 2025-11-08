@@ -33,6 +33,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+        // Skip JWT processing for Swagger endpoints
+        String requestPath = request.getServletPath();
+        if (requestPath.startsWith("/swagger-ui") || 
+            requestPath.startsWith("/v3/api-docs") || 
+            requestPath.startsWith("/swagger-resources") ||
+            requestPath.startsWith("/webjars") ||
+            requestPath.startsWith("/configuration")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;

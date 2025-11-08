@@ -40,11 +40,21 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // Endpoints de autenticación (públicos)
                         .requestMatchers("/auth/**").permitAll()
+                        
+                        // Endpoints de Swagger/OpenAPI (públicos) - IMPORTANTE: Sin el prefijo /api
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml", "/v3/api-docs").permitAll()
+                        .requestMatchers("/swagger-resources/**", "/webjars/**", "/configuration/**").permitAll()
+                        
+                        // Endpoints públicos de encuestas
                         .requestMatchers("/surveys/public/**").permitAll()
                         .requestMatchers("/surveys/published").permitAll()
                         .requestMatchers("/surveys/*/responses/**").permitAll()
                         .requestMatchers("/surveys/*/responses").permitAll()
+                        
+                        // Todos los demás endpoints requieren autenticación
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
