@@ -1,6 +1,7 @@
 package com.davivienda.survey.application.service;
 
 import com.davivienda.survey.application.dto.SurveyResponseRequest;
+import com.davivienda.survey.domain.model.Survey;
 import com.davivienda.survey.domain.model.SurveyResponse;
 import com.davivienda.survey.domain.port.ResponseRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,14 @@ public class ResponseService {
     private final SurveyService surveyService;
     
     public SurveyResponse submitResponse(String surveyId, SurveyResponseRequest request) {
-        surveyService.getSurvey(surveyId);
+        Survey survey = surveyService.getSurvey(surveyId);
+        
+        if (survey.getExpiresAt() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isAfter(survey.getExpiresAt())) {
+                throw new RuntimeException("Esta encuesta ha expirado y ya no acepta respuestas");
+            }
+        }
         
         List<SurveyResponse.Answer> answers = request.getAnswers().stream()
                 .map(a -> SurveyResponse.Answer.builder()

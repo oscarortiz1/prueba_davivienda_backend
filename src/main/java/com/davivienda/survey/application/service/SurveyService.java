@@ -22,6 +22,23 @@ public class SurveyService {
     private final ResponseRepository responseRepository;
     
     public Survey createSurvey(SurveyRequest request, String userId) {
+        LocalDateTime expiresAt = null;
+        if (request.getDurationUnit() != null && !"none".equals(request.getDurationUnit()) 
+            && request.getDurationValue() != null && request.getDurationValue() > 0) {
+            LocalDateTime now = LocalDateTime.now();
+            switch (request.getDurationUnit()) {
+                case "minutes":
+                    expiresAt = now.plusMinutes(request.getDurationValue());
+                    break;
+                case "hours":
+                    expiresAt = now.plusHours(request.getDurationValue());
+                    break;
+                case "days":
+                    expiresAt = now.plusDays(request.getDurationValue());
+                    break;
+            }
+        }
+        
         Survey survey = Survey.builder()
                 .id(UUID.randomUUID().toString())
                 .title(request.getTitle())
@@ -32,7 +49,7 @@ public class SurveyService {
                 .isPublished(false)
                 .durationValue(request.getDurationValue())
                 .durationUnit(request.getDurationUnit())
-                .expiresAt(request.getExpiresAt())
+                .expiresAt(expiresAt)
                 .questions(new ArrayList<>())
                 .build();
         
@@ -50,6 +67,13 @@ public class SurveyService {
         
         if (!Boolean.TRUE.equals(survey.getIsPublished())) {
             throw new RuntimeException("Survey is not published");
+        }
+        
+        if (survey.getExpiresAt() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isAfter(survey.getExpiresAt())) {
+                throw new RuntimeException("Esta encuesta ha expirado y ya no acepta respuestas");
+            }
         }
         
         return survey;
@@ -78,7 +102,25 @@ public class SurveyService {
         survey.setDescription(request.getDescription());
         survey.setDurationValue(request.getDurationValue());
         survey.setDurationUnit(request.getDurationUnit());
-        survey.setExpiresAt(request.getExpiresAt());
+        
+        LocalDateTime expiresAt = null;
+        if (request.getDurationUnit() != null && !"none".equals(request.getDurationUnit()) 
+            && request.getDurationValue() != null && request.getDurationValue() > 0) {
+            LocalDateTime now = LocalDateTime.now();
+            switch (request.getDurationUnit()) {
+                case "minutes":
+                    expiresAt = now.plusMinutes(request.getDurationValue());
+                    break;
+                case "hours":
+                    expiresAt = now.plusHours(request.getDurationValue());
+                    break;
+                case "days":
+                    expiresAt = now.plusDays(request.getDurationValue());
+                    break;
+            }
+        }
+        survey.setExpiresAt(expiresAt);
+        
         survey.setUpdatedAt(LocalDateTime.now());
         
         if (Boolean.TRUE.equals(survey.getIsPublished())) {
