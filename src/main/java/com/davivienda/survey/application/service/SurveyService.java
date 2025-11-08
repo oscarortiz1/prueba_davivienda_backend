@@ -30,6 +30,9 @@ public class SurveyService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .isPublished(false)
+                .durationValue(request.getDurationValue())
+                .durationUnit(request.getDurationUnit())
+                .expiresAt(request.getExpiresAt())
                 .questions(new ArrayList<>())
                 .build();
         
@@ -73,6 +76,9 @@ public class SurveyService {
         
         survey.setTitle(request.getTitle());
         survey.setDescription(request.getDescription());
+        survey.setDurationValue(request.getDurationValue());
+        survey.setDurationUnit(request.getDurationUnit());
+        survey.setExpiresAt(request.getExpiresAt());
         survey.setUpdatedAt(LocalDateTime.now());
         
         if (Boolean.TRUE.equals(survey.getIsPublished())) {

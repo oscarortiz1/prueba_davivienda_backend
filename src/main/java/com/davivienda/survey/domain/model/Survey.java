@@ -20,5 +20,8 @@ public class Survey {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isPublished;
+    private Integer durationValue;
+    private String durationUnit; 
+    private LocalDateTime expiresAt;
     private List<Question> questions;
 }

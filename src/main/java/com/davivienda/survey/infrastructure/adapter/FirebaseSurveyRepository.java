@@ -29,6 +29,12 @@ public class FirebaseSurveyRepository implements SurveyRepository {
         try {
             Map<String, Object> surveyData = surveyToMap(survey);
             
+            log.info("💾 Guardando encuesta en Firebase: ID={}, durationValue={}, durationUnit={}, expiresAt={}", 
+                survey.getId(), 
+                survey.getDurationValue(), 
+                survey.getDurationUnit(), 
+                survey.getExpiresAt());
+            
             CompletableFuture<Void> future = new CompletableFuture<>();
             
             getDatabase()
@@ -68,7 +74,15 @@ public class FirebaseSurveyRepository implements SurveyRepository {
                             
                             @SuppressWarnings("unchecked")
                             Map<String, Object> data = (Map<String, Object>) snapshot.getValue();
-                            future.complete(Optional.of(mapToSurvey(data)));
+                            Survey survey = mapToSurvey(data);
+                            
+                            log.info("📖 Recuperando encuesta de Firebase: ID={}, durationValue={}, durationUnit={}, expiresAt={}", 
+                                survey.getId(), 
+                                survey.getDurationValue(), 
+                                survey.getDurationUnit(), 
+                                survey.getExpiresAt());
+                            
+                            future.complete(Optional.of(survey));
                         }
                         
                         @Override
@@ -217,6 +231,14 @@ public class FirebaseSurveyRepository implements SurveyRepository {
         data.put("updatedAt", survey.getUpdatedAt().toString());
         data.put("isPublished", survey.getIsPublished());
         
+        data.put("durationValue", survey.getDurationValue());
+        data.put("durationUnit", survey.getDurationUnit());
+        if (survey.getExpiresAt() != null) {
+            data.put("expiresAt", survey.getExpiresAt().toString());
+        } else {
+            data.put("expiresAt", null);
+        }
+        
         if (survey.getQuestions() != null) {
             List<Map<String, Object>> questions = survey.getQuestions().stream()
                     .map(this::questionToMap)
@@ -251,6 +273,23 @@ public class FirebaseSurveyRepository implements SurveyRepository {
                     .collect(Collectors.toList());
         }
         
+        Integer durationValue = null;
+        if (data.get("durationValue") != null) {
+            Object dv = data.get("durationValue");
+            if (dv instanceof Long) {
+                durationValue = ((Long) dv).intValue();
+            } else if (dv instanceof Integer) {
+                durationValue = (Integer) dv;
+            }
+        }
+        
+        String durationUnit = (String) data.get("durationUnit");
+        
+        LocalDateTime expiresAt = null;
+        if (data.get("expiresAt") != null && data.get("expiresAt") instanceof String) {
+            expiresAt = LocalDateTime.parse((String) data.get("expiresAt"));
+        }
+        
         return Survey.builder()
                 .id((String) data.get("id"))
                 .title((String) data.get("title"))
@@ -259,6 +298,9 @@ public class FirebaseSurveyRepository implements SurveyRepository {
                 .createdAt(LocalDateTime.parse((String) data.get("createdAt")))
                 .updatedAt(LocalDateTime.parse((String) data.get("updatedAt")))
                 .isPublished((Boolean) data.get("isPublished"))
+                .durationValue(durationValue)
+                .durationUnit(durationUnit)
+                .expiresAt(expiresAt)
                 .questions(questions)
                 .build();
     }
