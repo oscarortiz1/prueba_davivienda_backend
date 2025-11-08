@@ -169,6 +169,9 @@ public class SurveyService {
             throw new RuntimeException("Unauthorized");
         }
         
+        System.out.println("🔍 DEBUG - Pregunta recibida: " + question.getTitle());
+        System.out.println("🔍 DEBUG - ImageUrl recibido: " + (question.getImageUrl() != null ? "Imagen presente (base64)" : "Sin imagen"));
+        
         question.setId(UUID.randomUUID().toString());
         question.setSurveyId(surveyId);
         
@@ -192,6 +195,9 @@ public class SurveyService {
         if (!survey.getCreatedBy().equals(userId)) {
             throw new RuntimeException("Unauthorized");
         }
+        
+        System.out.println("🔍 DEBUG - Actualizar pregunta: " + updatedQuestion.getTitle());
+        System.out.println("🔍 DEBUG - ImageUrl recibido: " + (updatedQuestion.getImageUrl() != null ? "Imagen presente (base64)" : "Sin imagen"));
         
         List<Question> questions = survey.getQuestions();
         for (int i = 0; i < questions.size(); i++) {

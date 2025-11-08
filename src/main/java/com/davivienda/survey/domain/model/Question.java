@@ -19,4 +19,5 @@ public class Question {
     private List<String> options;
     private Boolean required;
     private Integer order;
+    private String imageUrl;
 }

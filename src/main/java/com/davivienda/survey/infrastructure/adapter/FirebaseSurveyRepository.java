@@ -260,6 +260,7 @@ public class FirebaseSurveyRepository implements SurveyRepository {
         data.put("options", question.getOptions() != null ? question.getOptions() : new ArrayList<>());
         data.put("required", question.getRequired());
         data.put("order", question.getOrder());
+        data.put("imageUrl", question.getImageUrl());
         return data;
     }
     
@@ -324,6 +325,7 @@ public class FirebaseSurveyRepository implements SurveyRepository {
                 .options((List<String>) data.get("options"))
                 .required((Boolean) data.get("required"))
                 .order(order)
+                .imageUrl((String) data.get("imageUrl"))
                 .build();
     }
 }
