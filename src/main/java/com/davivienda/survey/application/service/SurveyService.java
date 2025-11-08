@@ -1,5 +1,7 @@
 package com.davivienda.survey.application.service;
 
+import com.davivienda.survey.application.constants.AppConstants;
+import com.davivienda.survey.application.constants.ErrorMessages;
 import com.davivienda.survey.application.dto.SurveyRequest;
 import com.davivienda.survey.domain.model.Question;
 import com.davivienda.survey.domain.model.Survey;
@@ -7,6 +9,7 @@ import com.davivienda.survey.domain.model.SurveyResponse;
 import com.davivienda.survey.domain.port.ResponseRepository;
 import com.davivienda.survey.domain.port.SurveyRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,24 +19,27 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SurveyService {
     
     private final SurveyRepository surveyRepository;
     private final ResponseRepository responseRepository;
     
     public Survey createSurvey(SurveyRequest request, String userId) {
+        log.info("Creating survey for user: {}", userId);
+        
         LocalDateTime expiresAt = null;
-        if (request.getDurationUnit() != null && !"none".equals(request.getDurationUnit()) 
+        if (request.getDurationUnit() != null && !AppConstants.DURATION_UNIT_NONE.equals(request.getDurationUnit()) 
             && request.getDurationValue() != null && request.getDurationValue() > 0) {
             LocalDateTime now = LocalDateTime.now();
             switch (request.getDurationUnit()) {
-                case "minutes":
+                case AppConstants.DURATION_UNIT_MINUTES:
                     expiresAt = now.plusMinutes(request.getDurationValue());
                     break;
-                case "hours":
+                case AppConstants.DURATION_UNIT_HOURS:
                     expiresAt = now.plusHours(request.getDurationValue());
                     break;
-                case "days":
+                case AppConstants.DURATION_UNIT_DAYS:
                     expiresAt = now.plusDays(request.getDurationValue());
                     break;
             }
@@ -58,21 +64,21 @@ public class SurveyService {
     
     public Survey getSurvey(String id) {
         return surveyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Survey not found"));
+                .orElseThrow(() -> new RuntimeException(ErrorMessages.SURVEY_NOT_FOUND));
     }
     
     public Survey getPublicSurvey(String id) {
         Survey survey = surveyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Survey not found"));
+                .orElseThrow(() -> new RuntimeException(ErrorMessages.SURVEY_NOT_FOUND));
         
         if (!Boolean.TRUE.equals(survey.getIsPublished())) {
-            throw new RuntimeException("Survey is not published");
+            throw new RuntimeException(ErrorMessages.SURVEY_NOT_PUBLISHED);
         }
         
         if (survey.getExpiresAt() != null) {
             LocalDateTime now = LocalDateTime.now();
             if (now.isAfter(survey.getExpiresAt())) {
-                throw new RuntimeException("Esta encuesta ha expirado y ya no acepta respuestas");
+                throw new RuntimeException(ErrorMessages.SURVEY_EXPIRED);
             }
         }
         
@@ -95,7 +101,7 @@ public class SurveyService {
         Survey survey = getSurvey(id);
         
         if (!survey.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new RuntimeException(ErrorMessages.UNAUTHORIZED);
         }
         
         survey.setTitle(request.getTitle());
@@ -104,17 +110,17 @@ public class SurveyService {
         survey.setDurationUnit(request.getDurationUnit());
         
         LocalDateTime expiresAt = null;
-        if (request.getDurationUnit() != null && !"none".equals(request.getDurationUnit()) 
+        if (request.getDurationUnit() != null && !AppConstants.DURATION_UNIT_NONE.equals(request.getDurationUnit()) 
             && request.getDurationValue() != null && request.getDurationValue() > 0) {
             LocalDateTime now = LocalDateTime.now();
             switch (request.getDurationUnit()) {
-                case "minutes":
+                case AppConstants.DURATION_UNIT_MINUTES:
                     expiresAt = now.plusMinutes(request.getDurationValue());
                     break;
-                case "hours":
+                case AppConstants.DURATION_UNIT_HOURS:
                     expiresAt = now.plusHours(request.getDurationValue());
                     break;
-                case "days":
+                case AppConstants.DURATION_UNIT_DAYS:
                     expiresAt = now.plusDays(request.getDurationValue());
                     break;
             }
@@ -134,7 +140,7 @@ public class SurveyService {
         Survey survey = getSurvey(id);
         
         if (!survey.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new RuntimeException(ErrorMessages.UNAUTHORIZED);
         }
         
         List<SurveyResponse> responses = responseRepository.findBySurveyId(id);
@@ -149,11 +155,11 @@ public class SurveyService {
         Survey survey = getSurvey(id);
         
         if (!survey.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new RuntimeException(ErrorMessages.UNAUTHORIZED);
         }
         
         if (survey.getQuestions() == null || survey.getQuestions().isEmpty()) {
-            throw new RuntimeException("Cannot publish survey without questions");
+            throw new RuntimeException(ErrorMessages.SURVEY_NO_QUESTIONS);
         }
         
         survey.setIsPublished(true);
@@ -166,11 +172,20 @@ public class SurveyService {
         Survey survey = getSurvey(surveyId);
         
         if (!survey.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new RuntimeException(ErrorMessages.UNAUTHORIZED);
         }
         
-        System.out.println("🔍 DEBUG - Pregunta recibida: " + question.getTitle());
-        System.out.println("🔍 DEBUG - ImageUrl recibido: " + (question.getImageUrl() != null ? "Imagen presente (base64)" : "Sin imagen"));
+        // Validar límite de preguntas por encuesta
+        if (survey.getQuestions() != null && survey.getQuestions().size() >= AppConstants.MAX_QUESTIONS_PER_SURVEY) {
+            throw new RuntimeException(
+                String.format(ErrorMessages.SURVEY_MAX_QUESTIONS_EXCEEDED, AppConstants.MAX_QUESTIONS_PER_SURVEY)
+            );
+        }
+        
+        // Validar tamaño de imagen en base64 (máximo 2MB)
+        if (question.getImageUrl() != null && question.getImageUrl().startsWith(AppConstants.BASE64_IMAGE_PREFIX)) {
+            validateBase64ImageSize(question.getImageUrl());
+        }
         
         question.setId(UUID.randomUUID().toString());
         question.setSurveyId(surveyId);
@@ -179,6 +194,7 @@ public class SurveyService {
             survey.setQuestions(new ArrayList<>());
         }
         
+        log.info("Adding question {} to survey {}", question.getId(), surveyId);
         survey.getQuestions().add(question);
         survey.setUpdatedAt(LocalDateTime.now());
         
@@ -193,11 +209,13 @@ public class SurveyService {
         Survey survey = getSurvey(surveyId);
         
         if (!survey.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new RuntimeException(ErrorMessages.UNAUTHORIZED);
         }
         
-        System.out.println("🔍 DEBUG - Actualizar pregunta: " + updatedQuestion.getTitle());
-        System.out.println("🔍 DEBUG - ImageUrl recibido: " + (updatedQuestion.getImageUrl() != null ? "Imagen presente (base64)" : "Sin imagen"));
+        // Validar tamaño de imagen en base64 (máximo 2MB)
+        if (updatedQuestion.getImageUrl() != null && updatedQuestion.getImageUrl().startsWith(AppConstants.BASE64_IMAGE_PREFIX)) {
+            validateBase64ImageSize(updatedQuestion.getImageUrl());
+        }
         
         List<Question> questions = survey.getQuestions();
         for (int i = 0; i < questions.size(); i++) {
@@ -222,7 +240,7 @@ public class SurveyService {
         Survey survey = getSurvey(surveyId);
         
         if (!survey.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new RuntimeException(ErrorMessages.UNAUTHORIZED);
         }
         
         survey.getQuestions().removeIf(q -> q.getId().equals(questionId));
@@ -233,5 +251,23 @@ public class SurveyService {
         }
         
         return surveyRepository.save(survey);
+    }
+    
+    /**
+     * Valida que el tamaño de la imagen en base64 no exceda los 2MB
+     */
+    private void validateBase64ImageSize(String base64Image) {
+        if (base64Image == null || base64Image.isEmpty()) {
+            return;
+        }
+        
+        // Calcular tamaño aproximado del base64 (cada carácter base64 = 6 bits)
+        // Tamaño real = (longitud * 3) / 4
+        long estimatedSize = (base64Image.length() * 3L) / 4;
+        
+        if (estimatedSize > AppConstants.MAX_IMAGE_SIZE_BYTES) {
+            log.warn("Image size exceeded: {} bytes", estimatedSize);
+            throw new RuntimeException(ErrorMessages.IMAGE_SIZE_EXCEEDED);
+        }
     }
 }
