@@ -69,7 +69,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        // Allow React frontend and React Native/Expo
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:5173",    // React frontend
+            "http://localhost:8081",    // Expo web
+            "http://localhost:19006",   // Expo alternative port
+            "exp://localhost:8081",     // Expo mobile
+            "http://192.168.1.7:8081"   // Expo mobile (replace with your IP if needed)
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
