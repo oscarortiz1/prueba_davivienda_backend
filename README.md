@@ -197,9 +197,9 @@ curl http://localhost:8080/api/health
 
 Una vez que la aplicación esté ejecutándose, puedes acceder a la documentación interactiva de la API:
 
-- **Swagger UI**: http://localhost:8080/swagger-ui.html
-- **OpenAPI JSON**: http://localhost:8080/v3/api-docs
-- **OpenAPI YAML**: http://localhost:8080/v3/api-docs.yaml
+- **Swagger UI**: http://localhost:8080/api/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/api/v3/api-docs
+- **OpenAPI YAML**: http://localhost:8080/api/v3/api-docs.yaml
 
 **Características de Swagger UI:**
 - 🔍 Explorar todos los endpoints disponibles
@@ -209,7 +209,7 @@ Una vez que la aplicación esté ejecutándose, puedes acceder a la documentaci�
 - 📋 Ejemplos de payloads para cada endpoint
 
 **Cómo usar Swagger:**
-1. Abre http://localhost:8080/swagger-ui.html
+1. Abre http://localhost:8080/api/swagger-ui.html
 2. Registra un usuario usando `POST /auth/register`
 3. Inicia sesión con `POST /auth/login` para obtener el token JWT
 4. Click en el botón **"Authorize"** (candado verde)
